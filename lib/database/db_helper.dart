@@ -8,6 +8,8 @@ import '../models/product.dart';
 import '../models/stock_movement.dart';
 import '../models/purchase_order.dart';
 import '../models/sale.dart';
+import '../models/client.dart';
+import '../models/reminder.dart';
 
 class DBHelper {
   DBHelper._internal();
@@ -45,8 +47,45 @@ class DBHelper {
 
     return databaseFactory.openDatabase(
       path,
-      options: OpenDatabaseOptions(version: 1, onCreate: _createDB),
+      options: OpenDatabaseOptions(
+        version: 2,
+        onCreate: _createDB,
+        onUpgrade: _upgradeDB,
+      ),
     );
+  }
+
+  Future<void> _upgradeDB(Database db, int oldVersion, int newVersion) async {
+    if (oldVersion < 2) {
+      await db.execute('ALTER TABLE sales ADD COLUMN client_id INTEGER');
+      await db.execute('''
+        CREATE TABLE clients (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          name TEXT NOT NULL,
+          phone TEXT,
+          email TEXT,
+          notes TEXT,
+          created_at TEXT NOT NULL
+        )
+      ''');
+      await db.execute('''
+        CREATE TABLE reminders (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          client_id INTEGER,
+          client_name TEXT,
+          product_id INTEGER,
+          product_name TEXT,
+          sale_id INTEGER,
+          due_date TEXT NOT NULL,
+          note TEXT,
+          done INTEGER NOT NULL DEFAULT 0,
+          created_at TEXT NOT NULL,
+          FOREIGN KEY (client_id) REFERENCES clients (id),
+          FOREIGN KEY (product_id) REFERENCES products (id),
+          FOREIGN KEY (sale_id) REFERENCES sales (id)
+        )
+      ''');
+    }
   }
 
   Future<void> _createDB(Database db, int version) async {
@@ -153,14 +192,45 @@ class DBHelper {
     ''');
 
     await db.execute('''
+      CREATE TABLE clients (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT NOT NULL,
+        phone TEXT,
+        email TEXT,
+        notes TEXT,
+        created_at TEXT NOT NULL
+      )
+    ''');
+
+    await db.execute('''
       CREATE TABLE sales (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         customer_name TEXT,
+        client_id INTEGER,
         location_id INTEGER NOT NULL,
         date TEXT NOT NULL,
         discount REAL DEFAULT 0,
         payment_method TEXT DEFAULT 'Dinheiro',
-        FOREIGN KEY (location_id) REFERENCES locations (id)
+        FOREIGN KEY (location_id) REFERENCES locations (id),
+        FOREIGN KEY (client_id) REFERENCES clients (id)
+      )
+    ''');
+
+    await db.execute('''
+      CREATE TABLE reminders (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        client_id INTEGER,
+        client_name TEXT,
+        product_id INTEGER,
+        product_name TEXT,
+        sale_id INTEGER,
+        due_date TEXT NOT NULL,
+        note TEXT,
+        done INTEGER NOT NULL DEFAULT 0,
+        created_at TEXT NOT NULL,
+        FOREIGN KEY (client_id) REFERENCES clients (id),
+        FOREIGN KEY (product_id) REFERENCES products (id),
+        FOREIGN KEY (sale_id) REFERENCES sales (id)
       )
     ''');
 
@@ -774,5 +844,61 @@ class DBHelper {
     final revenue = (rows.first['revenue'] as num).toDouble();
     final cost = (rows.first['cost'] as num).toDouble();
     return {'revenue': revenue, 'cost': cost, 'profit': revenue - cost};
+  }
+
+  // ---------------- CLIENTES ----------------
+  Future<int> insertClient(Client client) async {
+    final db = await database;
+    return db.insert('clients', client.toMap());
+  }
+
+  Future<int> updateClient(Client client) async {
+    final db = await database;
+    return db.update('clients', client.toMap(), where: 'id = ?', whereArgs: [client.id]);
+  }
+
+  Future<int> deleteClient(int id) async {
+    final db = await database;
+    return db.delete('clients', where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<List<Client>> getClients({String? search}) async {
+    final db = await database;
+    final where = search != null && search.isNotEmpty ? 'WHERE name LIKE ?' : '';
+    final args = search != null && search.isNotEmpty ? ['%$search%'] : <dynamic>[];
+    final rows = await db.rawQuery('SELECT * FROM clients $where ORDER BY name', args);
+    return rows.map((r) => Client.fromMap(r)).toList();
+  }
+
+  Future<Client?> getClientById(int id) async {
+    final db = await database;
+    final rows = await db.query('clients', where: 'id = ?', whereArgs: [id]);
+    if (rows.isEmpty) return null;
+    return Client.fromMap(rows.first);
+  }
+
+  // ---------------- LEMBRETES DE RECOMPRA ----------------
+  Future<int> insertReminder(Reminder reminder) async {
+    final db = await database;
+    return db.insert('reminders', reminder.toMap());
+  }
+
+  /// Lista lembretes ordenados por data de vencimento (mais próximos primeiro).
+  Future<List<Reminder>> getReminders({bool? done}) async {
+    final db = await database;
+    final where = done != null ? 'WHERE done = ?' : '';
+    final args = done != null ? [done ? 1 : 0] : <dynamic>[];
+    final rows = await db.rawQuery('SELECT * FROM reminders $where ORDER BY due_date ASC', args);
+    return rows.map((r) => Reminder.fromMap(r)).toList();
+  }
+
+  Future<int> markReminderDone(int id, {bool done = true}) async {
+    final db = await database;
+    return db.update('reminders', {'done': done ? 1 : 0}, where: 'id = ?', whereArgs: [id]);
+  }
+
+  Future<int> deleteReminder(int id) async {
+    final db = await database;
+    return db.delete('reminders', where: 'id = ?', whereArgs: [id]);
   }
 }

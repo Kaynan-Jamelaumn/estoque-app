@@ -9,6 +9,8 @@ import 'providers/supplier_provider.dart';
 import 'providers/purchase_provider.dart';
 import 'providers/sale_provider.dart';
 import 'providers/location_provider.dart';
+import 'providers/client_provider.dart';
+import 'providers/reminder_provider.dart';
 
 import 'screens/dashboard/dashboard_screen.dart';
 import 'screens/products/product_list_screen.dart';
@@ -19,6 +21,8 @@ import 'screens/sales/sale_list_screen.dart';
 import 'screens/locations/location_list_screen.dart';
 import 'screens/reports/reports_screen.dart';
 import 'screens/alerts/alerts_screen.dart';
+import 'screens/clients/client_list_screen.dart';
+import 'screens/reminders/reminder_list_screen.dart';
 
 Future<void> main() async {
   runZonedGuarded(() async {
@@ -55,6 +59,8 @@ class EstoqueApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PurchaseProvider()),
         ChangeNotifierProvider(create: (_) => SaleProvider()),
         ChangeNotifierProvider(create: (_) => LocationProvider()),
+        ChangeNotifierProvider(create: (_) => ClientProvider()),
+        ChangeNotifierProvider(create: (_) => ReminderProvider()),
       ],
       child: MaterialApp(
         title: 'Gestão de Estoque',
@@ -115,10 +121,12 @@ class _MoreMenu extends StatelessWidget {
   Widget build(BuildContext context) {
     final items = [
       _MenuItem('Vendas', Icons.point_of_sale, const SaleListScreen()),
+      _MenuItem('Clientes', Icons.people_outline, const ClientListScreen()),
+      _MenuItem('Lembretes de recompra', Icons.notifications_active_outlined, const ReminderListScreen()),
       _MenuItem('Compras / Fornecedores', Icons.shopping_cart_outlined, const PurchaseListScreen()),
       _MenuItem('Fornecedores', Icons.local_shipping_outlined, const SupplierListScreen()),
       _MenuItem('Locais de estoque', Icons.store_outlined, const LocationListScreen()),
-      _MenuItem('Alertas', Icons.notifications_active_outlined, const AlertsScreen()),
+      _MenuItem('Alertas', Icons.warning_amber_outlined, const AlertsScreen()),
       _MenuItem('Relatórios', Icons.bar_chart_outlined, const ReportsScreen()),
     ];
 

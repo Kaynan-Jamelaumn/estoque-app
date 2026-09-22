@@ -24,6 +24,7 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   Product? _product;
   List<Map<String, dynamic>> _stockByLocation = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -32,15 +33,26 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final product = await _db.getProductById(widget.productId);
-    final stock = await _db.getStockByLocation(widget.productId);
-    if (!mounted) return;
     setState(() {
-      _product = product;
-      _stockByLocation = stock;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final product = await _db.getProductById(widget.productId);
+      final stock = await _db.getStockByLocation(widget.productId);
+      if (!mounted) return;
+      setState(() {
+        _product = product;
+        _stockByLocation = stock;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   Future<void> _delete() async {
@@ -67,8 +79,29 @@ class _ProductDetailScreenState extends State<ProductDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    if (_loading || _product == null) {
+    if (_loading) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
+    if (_error != null || _product == null) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Produto')),
+        body: Center(
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                const SizedBox(height: 8),
+                Text(_error != null ? 'Erro ao carregar produto: $_error' : 'Produto não encontrado.',
+                    textAlign: TextAlign.center),
+                const SizedBox(height: 12),
+                FilledButton(onPressed: _load, child: const Text('Tentar novamente')),
+              ],
+            ),
+          ),
+        ),
+      );
     }
     final p = _product!;
 

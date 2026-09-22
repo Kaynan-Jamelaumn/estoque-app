@@ -124,6 +124,26 @@ class _ProductListScreenState extends State<ProductListScreen> {
             child: Consumer<ProductProvider>(
               builder: (context, prov, _) {
                 if (prov.loading) return const Center(child: CircularProgressIndicator());
+                if (prov.error != null) {
+                  return Center(
+                    child: Padding(
+                      padding: const EdgeInsets.all(24),
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                          const SizedBox(height: 8),
+                          Text('Erro ao carregar produtos: ${prov.error}', textAlign: TextAlign.center),
+                          const SizedBox(height: 12),
+                          FilledButton(
+                            onPressed: () => prov.loadProducts(search: _searchController.text, categoryId: _categoryFilter),
+                            child: const Text('Tentar novamente'),
+                          ),
+                        ],
+                      ),
+                    ),
+                  );
+                }
                 if (prov.products.isEmpty) {
                   return const Center(child: Text('Nenhum produto cadastrado.'));
                 }

@@ -7,6 +7,7 @@ class ProductProvider extends ChangeNotifier {
   List<Product> _products = [];
   List<Map<String, dynamic>> _categories = [];
   bool loading = false;
+  String? error;
 
   List<Product> get products => _products;
   List<Map<String, dynamic>> get categories => _categories;
@@ -20,10 +21,16 @@ class ProductProvider extends ChangeNotifier {
 
   Future<void> loadProducts({String? search, int? categoryId}) async {
     loading = true;
+    error = null;
     notifyListeners();
-    _products = await _db.getProducts(search: search, categoryId: categoryId);
-    loading = false;
-    notifyListeners();
+    try {
+      _products = await _db.getProducts(search: search, categoryId: categoryId);
+    } catch (e) {
+      error = e.toString();
+    } finally {
+      loading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> loadCategories() async {

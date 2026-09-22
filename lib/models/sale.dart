@@ -38,6 +38,7 @@ class SaleItem {
 class Sale {
   final int? id;
   final String? customerName;
+  final int? clientId;
   final int locationId;
   final DateTime date;
   final double discount;
@@ -47,6 +48,7 @@ class Sale {
   Sale({
     this.id,
     this.customerName,
+    this.clientId,
     required this.locationId,
     DateTime? date,
     this.discount = 0,
@@ -62,6 +64,7 @@ class Sale {
       Sale(
         id: map['id'] as int?,
         customerName: map['customer_name'] as String?,
+        clientId: map['client_id'] as int?,
         locationId: map['location_id'] as int,
         date: DateTime.parse(map['date'] as String),
         discount: (map['discount'] as num?)?.toDouble() ?? 0,
@@ -72,6 +75,7 @@ class Sale {
   Map<String, dynamic> toMap() => {
         if (id != null) 'id': id,
         'customer_name': customerName,
+        'client_id': clientId,
         'location_id': locationId,
         'date': date.toIso8601String(),
         'discount': discount,

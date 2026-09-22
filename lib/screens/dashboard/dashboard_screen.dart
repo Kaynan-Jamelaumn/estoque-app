@@ -24,6 +24,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
   List<Map<String, dynamic>> _stale = [];
   List<Map<String, dynamic>> _chart = [];
   bool _loading = true;
+  String? _error;
 
   @override
   void initState() {
@@ -32,21 +33,32 @@ class _DashboardScreenState extends State<DashboardScreen> {
   }
 
   Future<void> _load() async {
-    setState(() => _loading = true);
-    final summary = await _db.getDashboardSummary();
-    final top = await _db.getTopSellingProducts();
-    final entries = await _db.getRecentEntries();
-    final stale = await _db.getStaleProducts();
-    final chart = await _db.getDailyMovementChart(days: 14);
-    if (!mounted) return;
     setState(() {
-      _summary = summary;
-      _topSelling = top;
-      _recentEntries = entries;
-      _stale = stale.take(5).toList();
-      _chart = chart;
-      _loading = false;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final summary = await _db.getDashboardSummary();
+      final top = await _db.getTopSellingProducts();
+      final entries = await _db.getRecentEntries();
+      final stale = await _db.getStaleProducts();
+      final chart = await _db.getDailyMovementChart(days: 14);
+      if (!mounted) return;
+      setState(() {
+        _summary = summary;
+        _topSelling = top;
+        _recentEntries = entries;
+        _stale = stale.take(5).toList();
+        _chart = chart;
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
   }
 
   @override
@@ -83,9 +95,27 @@ class _DashboardScreenState extends State<DashboardScreen> {
         icon: const Icon(Icons.add),
         label: const Text('Movimentar'),
       ),
-      body: _loading || _summary == null
+      body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : RefreshIndicator(
+          : _error != null
+              ? Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(24),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.error_outline, color: Colors.red, size: 40),
+                        const SizedBox(height: 8),
+                        Text('Erro ao carregar o painel: $_error', textAlign: TextAlign.center),
+                        const SizedBox(height: 12),
+                        FilledButton(onPressed: _load, child: const Text('Tentar novamente')),
+                      ],
+                    ),
+                  ),
+                )
+              : _summary == null
+                  ? const Center(child: Text('Nenhum dado disponível ainda.'))
+                  : RefreshIndicator(
               onRefresh: _load,
               child: ListView(
                 padding: const EdgeInsets.all(12),
